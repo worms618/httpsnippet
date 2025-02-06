@@ -6,6 +6,7 @@ import { c } from './c/target';
 import { clojure } from './clojure/target';
 import { crystal } from './crystal/target';
 import { csharp } from './csharp/target';
+import { delphi } from './delphi/target';
 import { go } from './go/target';
 import { http } from './http/target';
 import { java } from './java/target';
@@ -63,6 +64,7 @@ export const targets = {
   clojure,
   crystal,
   csharp,
+  delphi,
   go,
   http,
   java,

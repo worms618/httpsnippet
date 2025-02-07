@@ -18,7 +18,7 @@ export const nethttpclient: Client = {
     link: 'https://docwiki.embarcadero.com/Libraries/Athens/en/System.Net.HttpClientComponent.TNetHTTPClient',
     description: 'A HTTP request with TNetHTTPClient class'
   },
-  convert: ({ fullUrl }, options) => {
+  convert: ({ allHeaders, fullUrl, method, postData }, options) => {
     const opts = {
       indent: '  ',
       ...options,
@@ -26,14 +26,112 @@ export const nethttpclient: Client = {
 
     const { blank, join, push } = new CodeBuilder({ indent: opts.indent });
 
-    push('uses', 0);
-      push('System.Net.HttpClientComponent;', 1);
+    const dependencies: string[] = ['System.Net.HttpClientComponent'];
+
+    const requiresSourceStream = method === 'POST';
+    let requiresHeader = false;
+
+    let clientMethodName = 'Get';
+    const clientMethodArguments: string[] = [`'${fullUrl}'`];
+
+    const headers: {variableName: string, variableDeclaration: string}[] = [];
+
+    if (requiresSourceStream) {
+      dependencies.push('System.Classes');
+
+      clientMethodName = 'Post';
+      clientMethodArguments.push('SourceStream', 'nil');
+    };
+
+    Object.keys(allHeaders).forEach(name => {
+      const value = allHeaders[name];
+
+      let nextIsUpperCase = true;
+      let encodedName: string = '';
+
+      for (let index = 0; index < name.length; index++) {
+        const char = name[index];
+        let encodedChar = char;
+
+        const isSeparatorChar = ['-'].indexOf(char) >= 0;
+
+        if (isSeparatorChar) {
+          nextIsUpperCase = true
+        }
+        else {
+          if (nextIsUpperCase) {
+            encodedChar = char.toUpperCase();
+            nextIsUpperCase = false;
+          }
+
+          encodedName = encodedName + encodedChar;
+        }
+      }
+
+      const variableName = `Header${encodedName}`;
+      headers.push({
+        variableName,
+        variableDeclaration: `var ${variableName} := TNetHeader.Create('${name}', '${value}');`
+      });
+    });
+
+    requiresHeader = (headers.length > 0);
+
+    if (requiresHeader) {
+      dependencies.push('System.Net.URLClient');
+
+      const shouldSetDefaultarguments = !requiresSourceStream;
+
+      if (shouldSetDefaultarguments) {
+        clientMethodArguments.push('nil', 'nil');
+      };
+
+      const headerVariables = headers
+                              .map(header => header.variableName)
+                              .join(', ');
+
+      const headerArgument = `[${headerVariables}]`;
+      clientMethodArguments.push(headerArgument);
+    }
+
+    // Process collections
+    const uses = dependencies
+                  .sort()
+                  .map((use, index, alldependencies) => {
+                    const isLast = index === (alldependencies.length - 1);
+
+                    return `${use}${isLast ? ';' : ','}`;
+                  });
+
+                  push('uses', 0);
+      uses.forEach(use => push(use, 1));
 
     blank();
+
     push('var Client := TNetHTTPClient.Create(nil);', 1);
+
+    if (requiresSourceStream)
+      push('var SourceStream: TStringStream := nil;', 1);
+
     push('try', 1);
-      push(`var HTTPResponse := Client.Get('${fullUrl}');`, 2)
+      if (requiresHeader) {
+        headers.forEach(header => push(header.variableDeclaration, 2));
+
+        blank();
+      }
+
+      if (requiresSourceStream) {
+        push(`var BodyContent := '${postData.text}';`, 2);
+        push('SourceStream := TStringStream.Create(BodyContent);', 2);
+
+        blank();
+      }
+
+      push(`var HTTPResponse := Client.${clientMethodName}(${clientMethodArguments.join(', ')});`, 2)
     push('finally', 1);
+      if (requiresSourceStream)
+        push('SourceStream.Free;', 2);
+
       push('Client.Free;', 2);
     push('end;', 1);
 

@@ -28,7 +28,7 @@ const fixtures: [string, Request][] = inputFileNames.map(inputFileName => [
 /** useful for debuggin, only run a particular set of targets */
 const targetFilter: TargetId[] = [
   // put your targetId:
-  // 'node',
+  'delphi',
 ];
 
 /** useful for debuggin, only run a particular set of targets */
@@ -40,7 +40,8 @@ const clientFilter: ClientId[] = [
 /** useful for debuggin, only run a particular set of fixtures */
 const fixtureFilter: string[] = [
   // put the name of the fixture file you want to isolate (excluding `.json`):
-  // 'multipart-file',
+  'short',
+  'application-json'
 ];
 
 /**
